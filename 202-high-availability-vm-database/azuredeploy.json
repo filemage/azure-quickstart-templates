@@ -1,0 +1,624 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "dbSku": {
+      "type": "string",
+      "defaultValue": "Standard_DS1_v2",
+      "metadata": {
+        "description": "The SKU of the database virtual machine."
+      }
+    },
+    "appSku": {
+      "type": "string",
+      "defaultValue": "Standard_DS1_v2",
+      "metadata": {
+        "description": "The SKU of the application virtual machines."
+      }
+    },
+    "scaleSetCapacity": {
+      "type": "int",
+      "defaultValue": 2,
+      "metadata": {
+        "description": "The number of application virtual machines to provision in the scale set."
+      }
+    },
+    "appLinuxAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The password of the Linux administrator user on the application virtual machines."
+      }
+    },
+    "dbLinuxAdminUsername": {
+      "type": "string",
+      "defaultValue": "ubuntu",
+      "metadata": {
+        "description": "The user name of the Linux administrator user on the database virtual machines."
+      }
+    },
+    "dbLinuxAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The password of the Linux administrator user on the database virtual machines."
+      }
+    },
+    "dbUsername": {
+      "type": "string",
+      "defaultValue": "filemage",
+      "metadata": {
+        "description": "The user name of the database role used by the application."
+      }
+    },
+    "dbPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The password of the database role used by the application."
+      }
+    },
+    "adminCidr": {
+      "type": "string",
+      "defaultValue": "0.0.0.0/0",
+      "metadata": {
+        "description": "The CIDR used to restrict SSH access."
+      }
+    }
+  },
+  "variables": {
+    "vnetAddress": "10.0.0.0/16",
+    "subnetAddress": "10.0.0.0/24",
+    "vnetName": "filemage-vnet",
+    "subnetName": "filemage-subnet",
+    "dbVmName": "filemage-db-vm",
+    "lbPublicIpName": "filemage-lb-ip",
+    "dbPublicIpName": "filemage-db-ip",
+    "lbName": "filemage-lb",
+    "appNsgName": "filemage-app-nsg",
+    "dbNsgName": "filemage-db-nsg",
+    "dbNicName": "filemage-db-nic",
+    "scaleSetName": "filemage-vms",
+    "lbFrontendName": "ipv4-frontend",
+    "poolName": "ipv4-pool",
+    "httpsProbeName": "https-probe",
+    "sftpProbeName": "sftp-probe",
+    "ftpProbeName": "ftp-probe",
+    "lbDns": "[concat('filemage-', uniquestring(resourceGroup().id))]",
+    "vnetId": "[resourceId('Microsoft.Network/virtualNetworks',variables('vnetName'))]",
+    "lbId": "[resourceId('Microsoft.Network/loadBalancers', variables('lbName'))]",
+    "dbVmId": "[resourceId('Microsoft.Compute/virtualMachines', variables('dbVmName'))]",
+    "frontendId": "[concat(variables('lbId'), '/frontendIPConfigurations/', variables('lbFrontendName'))]",
+    "lbPublicIpId": "[resourceId('Microsoft.Network/publicIPAddresses', variables('lbPublicIpName'))]",
+    "dbPublicIpId": "[resourceId('Microsoft.Network/publicIPAddresses', variables('dbPublicIpName'))]",
+    "poolId": "[concat(variables('lbId'), '/backendAddressPools/', variables('poolName'))]",
+    "appNsgId": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('appNsgName'))]",
+    "dbNicId": "[resourceId('Microsoft.Network/networkInterfaces', variables('dbNicName'))]",
+    "dbNsgId": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('dbNsgName'))]",
+    "subnetId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnetName'))]",
+    "httpsProbeId": "[concat(variables('lbId'),'/probes/', variables('httpsProbeName'))]",
+    "sftpProbeId": "[concat(variables('lbId'),'/probes/', variables('sftpProbeName'))]",
+    "ftpProbeId": "[concat(variables('lbId'),'/probes/', variables('ftpProbeName'))]",
+    "appScriptLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/202-high-availability-vm-database/initialize-application.sh",
+    "dbScriptLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/202-high-availability-vm-database/initialize-database.sh",
+    "location": "[resourceGroup().location]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2020-04-01",
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "[variables('vnetName')]",
+      "location": "[variables('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('vnetAddress')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('subnetName')]",
+            "properties": {
+              "addressPrefix": "[variables('subnetAddress')]"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2019-09-01",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('dbPublicIpName')]",
+      "location": "[variables('location')]",
+      "properties": {
+        "publicIPAllocationMethod": "dynamic",
+        "publicIPAddressVersion": "IPv4"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('dbNicName')]",
+      "apiVersion": "2018-10-01",
+      "location": "[variables('location')]",
+      "dependsOn": [
+        "[variables('vnetId')]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "db-nic-ip",
+            "properties": {
+              "subnet": {
+                "id": "[variables('subnetId')]"
+              },
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[variables('dbPublicIpId')]"
+              }
+            }
+          }
+        ],
+        "networkSecurityGroup": {
+          "id": "[variables('dbNsgId')]"
+        }
+      }
+    },
+    {
+      "name": "[variables('dbNsgName')]",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2018-04-01",
+      "location": "[variables('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "ssh",
+            "properties": {
+              "priority": 100,
+              "sourceAddressPrefix": "[parameters('adminCidr')]",
+              "protocol": "Tcp",
+              "destinationPortRange": "22",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "postgres",
+            "properties": {
+              "priority": 200,
+              "sourceAddressPrefix": "[parameters('adminCidr')]",
+              "protocol": "Tcp",
+              "destinationPortRange": "5432",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "postgres-subnet",
+            "properties": {
+              "priority": 300,
+              "sourceAddressPrefix": "[variables('subnetAddress')]",
+              "protocol": "Tcp",
+              "destinationPortRange": "5432",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[concat(variables('dbVmName'))]",
+      "apiVersion": "2018-10-01",
+      "location": "[variables('location')]",
+      "dependsOn": [
+        "[variables('dbNicId')]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('dbSku')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "UbuntuServer",
+            "sku": "18.04-LTS",
+            "version": "latest"
+          },
+          "osDisk": {
+            "caching": "ReadWrite",
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "Standard_LRS"
+            }
+          },
+          "dataDisks": [
+            {
+              "name": "[concat(variables('dbVmName'), '-datadisk')]",
+              "lun": 0,
+              "createOption": "Empty",
+              "diskSizeGB": 10
+            }
+          ]
+        },
+        "osProfile": {
+          "computerName": "postgresql",
+          "adminUsername": "[parameters('dbLinuxAdminUsername')]",
+          "adminPassword": "[parameters('dbLinuxAdminPassword')]"
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[variables('dbNicId')]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2018-06-01",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('dbVmName'), '/', 'init-db')]",
+      "location": "[variables('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/', variables('dbVmName'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.0",
+        "autoUpgradeMinorVersion": true,
+        "protectedSettings": {
+          "commandToExecute": "[concat('./initialize-database.sh', ' ', parameters('dbUsername'), ' ', parameters('dbPassword'))]"
+        },
+        "settings": {
+          "fileUris": [
+            "[variables('dbScriptLocation')]"
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2019-09-01",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('lbPublicIpName')]",
+      "location": "[variables('location')]",
+      "properties": {
+        "publicIPAllocationMethod": "dynamic",
+        "publicIPAddressVersion": "IPv4",
+        "dnsSettings": {
+          "domainNameLabel": "[variables('lbDns')]"
+        }
+      }
+    },
+    {
+      "name": "[variables('lbName')]",
+      "type": "Microsoft.Network/loadBalancers",
+      "dependsOn": [
+        "[variables('lbPublicIpId')]"
+      ],
+      "apiVersion": "2019-09-01",
+      "location": "[variables('location')]",
+      "sku": {
+        "name": "Basic"
+      },
+      "properties": {
+        "frontendIPConfigurations": [
+          {
+            "name": "[variables('lbFrontendName')]",
+            "properties": {
+              "publicIPAddress": {
+                "id": "[variables('lbPublicIpId')]"
+              }
+            }
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "[variables('poolName')]"
+          }
+        ],
+        "loadBalancingRules": [
+          {
+            "name": "sftp",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[variables('frontendId')]"
+              },
+              "backendAddressPool": {
+                "id": "[variables('poolId')]"
+              },
+              "protocol": "Tcp",
+              "frontendPort": 22,
+              "backendPort": 2222,
+              "probe": {
+                "id": "[variables('sftpProbeId')]"
+              }
+            }
+          },
+          {
+            "name": "ftp",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[variables('frontendId')]"
+              },
+              "backendAddressPool": {
+                "id": "[variables('poolId')]"
+              },
+              "protocol": "Tcp",
+              "frontendPort": 21,
+              "backendPort": 21,
+              "probe": {
+                "id": "[variables('ftpProbeId')]"
+              }
+            }
+          },
+          {
+            "name": "http",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[variables('frontendId')]"
+              },
+              "backendAddressPool": {
+                "id": "[variables('poolId')]"
+              },
+              "protocol": "Tcp",
+              "frontendPort": 80,
+              "backendPort": 80
+            }
+          },
+          {
+            "name": "https",
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[variables('frontendId')]"
+              },
+              "backendAddressPool": {
+                "id": "[variables('poolId')]"
+              },
+              "protocol": "Tcp",
+              "frontendPort": 443,
+              "backendPort": 443,
+              "probe": {
+                "id": "[variables('httpsProbeId')]"
+              }
+            }
+          }
+        ],
+        "probes": [
+          {
+            "name": "[variables('httpsProbeName')]",
+            "properties": {
+              "protocol": "Tcp",
+              "port": 443,
+              "intervalInSeconds": 5,
+              "numberOfProbes": 2
+            }
+          },
+          {
+            "name": "[variables('sftpProbeName')]",
+            "properties": {
+              "protocol": "Tcp",
+              "port": 2222,
+              "intervalInSeconds": 5,
+              "numberOfProbes": 2
+            }
+          },
+          {
+            "name": "[variables('ftpProbeName')]",
+            "properties": {
+              "protocol": "Tcp",
+              "port": 21,
+              "intervalInSeconds": 5,
+              "numberOfProbes": 2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[variables('scaleSetName')]",
+      "type": "Microsoft.Compute/virtualMachineScaleSets",
+      "apiVersion": "2019-12-01",
+      "location": "[variables('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('dbVmName'), 'init-db')]",
+        "[variables('appNsgId')]",
+        "[variables('lbId')]"
+      ],
+      "sku": {
+        "name": "[parameters('appSku')]",
+        "capacity": "[parameters('scaleSetCapacity')]"
+      },
+      "plan": {
+        "name": "filemage-gateway-vm-002",
+        "publisher": "filemagellc",
+        "product": "filemage-gateway-vm",
+        "promotionCode": "string"
+      },
+      "properties": {
+        "upgradePolicy": {
+          "mode": "Manual"
+        },
+        "virtualMachineProfile": {
+          "osProfile": {
+            "computerNamePrefix": "filemage",
+            "adminUsername": "ubuntu",
+            "adminPassword": "[parameters('appLinuxAdminPassword')]",
+            "linuxConfiguration": {
+              "disablePasswordAuthentication": false
+            }
+          },
+          "storageProfile": {
+            "imageReference": {
+              "publisher": "filemagellc",
+              "offer": "filemage-gateway-vm",
+              "sku": "filemage-gateway-vm-002",
+              "version": "latest"
+            },
+            "osDisk": {
+              "caching": "ReadWrite",
+              "createOption": "FromImage",
+              "managedDisk": {
+                "storageAccountType": "Standard_LRS"
+              }
+            }
+          },
+          "networkProfile": {
+            "networkInterfaceConfigurations": [
+              {
+                "name": "primary-nic",
+                "properties": {
+                  "primary": true,
+                  "networkSecurityGroup": {
+                    "id": "[variables('appNsgId')]"
+                  },
+                  "ipConfigurations": [
+                    {
+                      "name": "nic-ipv4",
+                      "properties": {
+                        "subnet": {
+                          "id": "[variables('subnetId')]"
+                        },
+                        "loadBalancerBackendAddressPools": [
+                          {
+                            "id": "[variables('poolId')]"
+                          }
+                        ],
+                        "publicIPAddressConfiguration": {
+                          "name": "public-ipv4"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "extensionProfile": {
+            "extensions": [
+              {
+                "name": "init-app",
+                "properties": {
+                  "publisher": "Microsoft.Azure.Extensions",
+                  "type": "CustomScript",
+                  "typeHandlerVersion": "2.0",
+                  "autoUpgradeMinorVersion": true,
+                  "protectedSettings": {
+                    "commandToExecute": "[concat('./initialize-application.sh', ' ',  reference(variables('dbNicId')).ipConfigurations[0].properties.privateIPAddress, ' ', parameters('dbUsername'), ' ', parameters('dbPassword'))]"
+                  },
+                  "settings": {
+                    "fileUris": [
+                      "[variables('appScriptLocation')]"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "[variables('appNsgName')]",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2018-04-01",
+      "location": "[variables('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "ssh",
+            "properties": {
+              "priority": 100,
+              "sourceAddressPrefix": "[parameters('adminCidr')]",
+              "protocol": "Tcp",
+              "destinationPortRange": "22",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "sftp",
+            "properties": {
+              "priority": 200,
+              "sourceAddressPrefix": "*",
+              "protocol": "Tcp",
+              "destinationPortRange": "2222",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "ftp",
+            "properties": {
+              "priority": 300,
+              "sourceAddressPrefix": "*",
+              "protocol": "Tcp",
+              "destinationPortRange": "21",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "ftp-passive",
+            "properties": {
+              "priority": 400,
+              "sourceAddressPrefix": "*",
+              "protocol": "Tcp",
+              "destinationPortRange": "32768-60999",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "http",
+            "properties": {
+              "priority": 500,
+              "sourceAddressPrefix": "*",
+              "protocol": "Tcp",
+              "destinationPortRange": "80",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*"
+            }
+          },
+          {
+            "name": "https",
+            "properties": {
+              "priority": 600,
+              "sourceAddressPrefix": "*",
+              "protocol": "Tcp",
+              "destinationPortRange": "443",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "outputs": {
+    "loadBalancerFqdn": {
+      "type": "string",
+      "value": "[reference(variables('lbPublicIpId')).dnsSettings.fqdn]"
+    },
+    "testID": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('dbVmName'), 'init-db')]"
+    }
+  }
+}
