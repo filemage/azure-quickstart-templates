@@ -436,8 +436,7 @@
       "plan": {
         "name": "filemage-gateway-vm-002",
         "publisher": "filemagellc",
-        "product": "filemage-gateway-vm",
-        "promotionCode": "string"
+        "product": "filemage-gateway-vm"
       },
       "properties": {
         "upgradePolicy": {
