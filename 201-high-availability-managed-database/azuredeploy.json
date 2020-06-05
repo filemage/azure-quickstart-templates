@@ -81,7 +81,8 @@
     "httpsProbeId": "[concat(variables('lbId'),'/probes/', variables('httpsProbeName'))]",
     "sftpProbeId": "[concat(variables('lbId'),'/probes/', variables('sftpProbeName'))]",
     "ftpProbeId": "[concat(variables('lbId'),'/probes/', variables('ftpProbeName'))]",
-    "scriptLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/201-high-availability-managed-database/initialize-application.sh",
+    "scriptLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/201-high-availability-managed-database/files/initialize-application.sh",
+    "hostKeyLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/201-high-availability-managed-database/files/ssh_host_rsa_key",
     "location": "[resourceGroup().location]"
   },
   "resources": [
@@ -397,7 +398,8 @@
                   "autoUpgradeMinorVersion": true,
                   "settings": {
                     "fileUris": [
-                      "[variables('scriptLocation')]"
+                      "[variables('scriptLocation')]",
+                      "[variables('hostKeyLocation')]"
                     ]
                   },
                   "protectedSettings": {

@@ -96,8 +96,9 @@
     "httpsProbeId": "[concat(variables('lbId'),'/probes/', variables('httpsProbeName'))]",
     "sftpProbeId": "[concat(variables('lbId'),'/probes/', variables('sftpProbeName'))]",
     "ftpProbeId": "[concat(variables('lbId'),'/probes/', variables('ftpProbeName'))]",
-    "appScriptLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/202-high-availability-vm-database/initialize-application.sh",
-    "dbScriptLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/202-high-availability-vm-database/initialize-database.sh",
+    "appScriptLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/202-high-availability-vm-database/files/initialize-application.sh",
+    "dbScriptLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/202-high-availability-vm-database/files/initialize-database.sh",
+    "hostKeyLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/202-high-availability-vm-database/files/ssh_host_rsa_key",
     "location": "[resourceGroup().location]"
   },
   "resources": [
@@ -511,7 +512,8 @@
                   },
                   "settings": {
                     "fileUris": [
-                      "[variables('appScriptLocation')]"
+                      "[variables('appScriptLocation')]",
+                      "[variables('hostKeyLocation')]"
                     ]
                   }
                 }
