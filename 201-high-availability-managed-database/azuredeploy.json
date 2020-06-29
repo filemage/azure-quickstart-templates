@@ -29,6 +29,13 @@
         "description": "The number of application virtual machines to provision in the scale set."
       }
     },
+    "linuxAdminUsername": {
+      "type": "string",
+      "defaultValue": "ubuntu",
+      "metadata": {
+        "description": "The user name of the superuser on the managed database."
+      }
+    },
     "linuxAdminPassword": {
       "type": "securestring",
       "metadata": {
@@ -46,6 +53,13 @@
       "type": "securestring",
       "metadata": {
         "description": "The password of the superuser on the managed database."
+      }
+    },
+    "sessionSecret": {
+      "type": "securestring",
+      "defaultValue": "[uniqueString(resourceGroup().id)]",
+      "metadata": {
+        "description": "Random key used for encrypting cookies."
       }
     },
     "adminCidr": {
@@ -335,7 +349,7 @@
         "virtualMachineProfile": {
           "osProfile": {
             "computerNamePrefix": "filemage",
-            "adminUsername": "ubuntu",
+            "adminUsername": "[parameters('linuxAdminUsername')]",
             "adminPassword": "[parameters('linuxAdminPassword')]",
             "linuxConfiguration": {
               "disablePasswordAuthentication": false
@@ -403,7 +417,7 @@
                     ]
                   },
                   "protectedSettings": {
-                    "commandToExecute": "[concat('./initialize-application.sh', ' ', reference(variables('dbname')).fullyQualifiedDomainName, ' ', parameters('dbUsername'), ' ', variables('dbName'), ' ', parameters('dbPassword'))]"
+                    "commandToExecute": "[concat('./initialize-application.sh', ' ', reference(variables('dbname')).fullyQualifiedDomainName, ' ', parameters('dbUsername'), ' ', variables('dbName'), ' ', parameters('dbPassword'), ' ', parameters('sessionSecret'))]"
                   }
                 }
               }

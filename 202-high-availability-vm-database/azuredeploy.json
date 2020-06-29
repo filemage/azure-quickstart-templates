@@ -23,6 +23,13 @@
         "description": "The number of application virtual machines to provision in the scale set."
       }
     },
+    "appLinuxAdminUsername": {
+      "type": "string",
+      "defaultValue": "ubuntu",
+      "metadata": {
+        "description": "The user name of the superuser on the managed database."
+      }
+    },
     "appLinuxAdminPassword": {
       "type": "securestring",
       "metadata": {
@@ -53,6 +60,13 @@
       "type": "securestring",
       "metadata": {
         "description": "The password of the database role used by the application."
+      }
+    },
+    "sessionSecret": {
+      "type": "securestring",
+      "defaultValue": "[uniqueString(resourceGroup().id)]",
+      "metadata": {
+        "description": "Random key used for encrypting cookies."
       }
     },
     "adminCidr": {
@@ -446,7 +460,7 @@
         "virtualMachineProfile": {
           "osProfile": {
             "computerNamePrefix": "filemage",
-            "adminUsername": "ubuntu",
+            "adminUsername": "[parameters('appLinuxAdminUsername')]",
             "adminPassword": "[parameters('appLinuxAdminPassword')]",
             "linuxConfiguration": {
               "disablePasswordAuthentication": false
@@ -508,7 +522,7 @@
                   "typeHandlerVersion": "2.0",
                   "autoUpgradeMinorVersion": true,
                   "protectedSettings": {
-                    "commandToExecute": "[concat('./initialize-application.sh', ' ',  reference(variables('dbNicId')).ipConfigurations[0].properties.privateIPAddress, ' ', parameters('dbUsername'), ' ', parameters('dbPassword'))]"
+                    "commandToExecute": "[concat('./initialize-application.sh', ' ',  reference(variables('dbNicId')).ipConfigurations[0].properties.privateIPAddress, ' ', parameters('dbUsername'), ' ', parameters('dbPassword'), ' ', parameters('sessionSecret'))]"
                   },
                   "settings": {
                     "fileUris": [
