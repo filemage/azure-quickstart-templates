@@ -449,7 +449,7 @@
         "capacity": "[parameters('scaleSetCapacity')]"
       },
       "plan": {
-        "name": "filemage-gateway-vm-002",
+        "name": "filemage-gateway-vm-003",
         "publisher": "filemagellc",
         "product": "filemage-gateway-vm"
       },
@@ -470,7 +470,7 @@
             "imageReference": {
               "publisher": "filemagellc",
               "offer": "filemage-gateway-vm",
-              "sku": "filemage-gateway-vm-002",
+              "sku": "filemage-gateway-vm-003",
               "version": "latest"
             },
             "osDisk": {
@@ -630,10 +630,6 @@
     "loadBalancerFqdn": {
       "type": "string",
       "value": "[reference(variables('lbPublicIpId')).dnsSettings.fqdn]"
-    },
-    "testID": {
-      "type": "string",
-      "value": "[resourceId('Microsoft.Compute/virtualMachines/extensions', variables('dbVmName'), 'init-db')]"
     }
   }
 }
