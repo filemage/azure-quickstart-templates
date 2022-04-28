@@ -11,3 +11,5 @@ The parameter `adminCidr` specifies the CIDR address range of your local worksta
 Once the deployment is complete use the DNS name from the output `loadbalancerDns` to access your deployment.
 
 [<img src="http://azuredeploy.net/deploybutton.png"/>](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Ffilemage%2Fazure-quickstart-templates%2Fmaster%2F201-high-availability-managed-database%2Fazuredeploy.json)
+
+Note: If you modify the template to use an existing subnet for the application instances, you must add a service endpoint for `Microsoft.Sql` to enable access to the managed database service.
