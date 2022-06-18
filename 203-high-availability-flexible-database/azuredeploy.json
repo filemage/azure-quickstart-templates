@@ -83,8 +83,8 @@
     "httpsProbeId": "[concat(variables('lbId'),'/probes/', variables('httpsProbeName'))]",
     "sftpProbeId": "[concat(variables('lbId'),'/probes/', variables('sftpProbeName'))]",
     "ftpProbeId": "[concat(variables('lbId'),'/probes/', variables('ftpProbeName'))]",
-    "scriptLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/flexible/201-high-availability-managed-database/files/initialize-application.sh",
-    "hostKeyLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/201-high-availability-managed-database/files/ssh_host_rsa_key",
+    "scriptLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/203-high-availability-flexible-database/files/initialize-application.sh",
+    "hostKeyLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/203-high-availability-flexible-database/files/ssh_host_rsa_key",
     "location": "[resourceGroup().location]"
   },
   "resources": [
