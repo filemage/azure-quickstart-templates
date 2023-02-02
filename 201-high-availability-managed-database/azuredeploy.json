@@ -75,6 +75,20 @@
       "metadata": {
         "description": "The full resource ID of an optional custom image to use."
       }
+    },
+    "scriptLocation": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/201-high-availability-managed-database/files/initialize-application.sh",
+      "metadata": {
+        "description": "The URL of the application init script."
+      }
+    },
+    "hostKeyLocation": {
+      "type": "string",
+      "defaultValue": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/201-high-availability-managed-database/files/ssh_host_rsa_key",
+      "metadata": {
+        "description": "The URL of the shared SSH host key."
+      }
     }
   },
   "variables": {
@@ -102,8 +116,6 @@
     "httpsProbeId": "[concat(variables('lbId'),'/probes/', variables('httpsProbeName'))]",
     "sftpProbeId": "[concat(variables('lbId'),'/probes/', variables('sftpProbeName'))]",
     "ftpProbeId": "[concat(variables('lbId'),'/probes/', variables('ftpProbeName'))]",
-    "scriptLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/201-high-availability-managed-database/files/initialize-application.sh",
-    "hostKeyLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/201-high-availability-managed-database/files/ssh_host_rsa_key",
     "location": "[resourceGroup().location]",
     "defaultImageReference": {
       "publisher": "filemagellc",
@@ -423,8 +435,8 @@
                   "autoUpgradeMinorVersion": true,
                   "settings": {
                     "fileUris": [
-                      "[variables('scriptLocation')]",
-                      "[variables('hostKeyLocation')]"
+                      "[parameters('scriptLocation')]",
+                      "[parameters('hostKeyLocation')]"
                     ]
                   },
                   "protectedSettings": {
