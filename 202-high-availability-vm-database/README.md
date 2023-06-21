@@ -7,5 +7,3 @@ The template will create a virtual network and subnet. If you want to deploy int
 The parameter `adminCidr` specifies the CIDR address range of your local workstation or office. This is used to restrict SSH and non-subnet database access.
 
 Once the deployment is complete use the DNS name from the output `loadbalancerDns` to access your deployment.
-
-[<img src="http://azuredeploy.net/deploybutton.png"/>](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2Ffilemage%2Fazure-quickstart-templates%2Fmaster%2F202-high-availability-vm-database%2Fazuredeploy.json)
