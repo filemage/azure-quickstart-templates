@@ -449,7 +449,7 @@
         "capacity": "[parameters('scaleSetCapacity')]"
       },
       "plan": {
-        "name": "filemage-gateway-vm-003",
+        "name": "filemage-gateway-vm-005",
         "publisher": "filemagellc",
         "product": "filemage-gateway-vm"
       },
@@ -470,7 +470,7 @@
             "imageReference": {
               "publisher": "filemagellc",
               "offer": "filemage-gateway-vm",
-              "sku": "filemage-gateway-vm-003",
+              "sku": "filemage-gateway-vm-005",
               "version": "latest"
             },
             "osDisk": {
