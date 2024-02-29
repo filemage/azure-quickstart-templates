@@ -41,13 +41,6 @@
       "metadata": {
         "description": "Random key used for encrypting cookies."
       }
-    },
-    "adminCidr": {
-      "type": "string",
-      "defaultValue": "0.0.0.0/0",
-      "metadata": {
-        "description": "The CIDR used to restrict SSH access."
-      }
     }
   },
   "variables": {
