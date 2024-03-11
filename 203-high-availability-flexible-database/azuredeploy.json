@@ -11,7 +11,7 @@
     },
     "scaleSetCapacity": {
       "type": "int",
-      "defaultValue": 1,
+      "defaultValue": 2,
       "metadata": {
         "description": "The number of application virtual machines to provision in the scale set."
       }
@@ -152,7 +152,7 @@
         "tier": "GeneralPurpose"
       },
       "properties": {
-        "administratorLogin": "lv_sftp_superuser",
+        "administratorLogin": "filemage",
         "administratorLoginPassword": "[parameters('dbPassword')]",
         "availabilityZone": "",
         "Backup": {
@@ -175,7 +175,7 @@
       },
       "resources": [
         {
-          "name": "lv_sftp_filemage_db",
+          "name": "filemage",
           "type": "databases",
           "apiVersion": "2021-06-01",
           "properties": {
@@ -216,7 +216,7 @@
           "name": "pg_partman_bgw.dbname",
           "properties": {
             "source": "user-override",
-            "value": "lv_sftp_filemage_db"
+            "value": "filemage"
           },
           "dependsOn": [
             "[concat('Microsoft.DBforPostgreSQL/flexibleServers/', variables('dbName'))]"
@@ -228,7 +228,7 @@
           "name": "pg_partman_bgw.role",
           "properties": {
             "source": "user-override",
-            "value": "lv_sftp_superuser"
+            "value": "filemage"
           },
           "dependsOn": [
             "[concat('Microsoft.DBforPostgreSQL/flexibleServers/', variables('dbName'))]"
@@ -450,6 +450,28 @@
                 }
               }
             ]
+          },
+          "extensionProfile": {
+            "extensions": [
+              {
+                "name": "init",
+                "properties": {
+                  "publisher": "Microsoft.Azure.Extensions",
+                  "type": "CustomScript",
+                  "typeHandlerVersion": "2.0",
+                  "autoUpgradeMinorVersion": true,
+                  "settings": {
+                    "fileUris": [
+                      "[variables('scriptLocation')]",
+                      "[variables('hostKeyLocation')]"
+                    ]
+                  },
+                  "protectedSettings": {
+                    "commandToExecute": "[concat('./initialize-application.sh', ' ', reference(variables('dbname')).fullyQualifiedDomainName, ' ', 'filemage', ' ', parameters('dbPassword'), ' ', parameters('sessionSecret'))]"
+                  }
+                }
+              }
+            ]
           }
         }
       }
@@ -465,7 +487,7 @@
             "name": "ssh",
             "properties": {
               "priority": 100,
-              "sourceAddressPrefix": "*",
+              "sourceAddressPrefix": "[parameters('adminCidr')]",
               "protocol": "Tcp",
               "destinationPortRange": "22",
               "access": "Allow",
