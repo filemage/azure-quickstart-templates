@@ -41,6 +41,12 @@
       "metadata": {
         "description": "Random key used for encrypting cookies."
       }
+    },
+    "adminCidr": {
+      "type": "string",
+      "metadata": {
+        "description": ""
+      }
     }
   },
   "variables": {
@@ -72,17 +78,22 @@
     "subnetId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('subnetName'))]",
     "dbSubnetId": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), variables('dbSubnetName'))]",
     "privateDnsId": "[resourceId('Microsoft.Network/privateDnsZones', variables('privateDnsZoneName'))]",
+    "dbId": "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers/', variables('dbName'))]",
     "vnetLinkId": "[concat(variables('privateDnsId'),'/virtualNetworkLinks/database')]",
     "httpsProbeId": "[concat(variables('lbId'),'/probes/', variables('httpsProbeName'))]",
     "sftpProbeId": "[concat(variables('lbId'),'/probes/', variables('sftpProbeName'))]",
     "ftpProbeId": "[concat(variables('lbId'),'/probes/', variables('ftpProbeName'))]",
     "scriptLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/203-high-availability-flexible-database/files/initialize-application.sh",
     "hostKeyLocation": "https://raw.githubusercontent.com/filemage/azure-quickstart-templates/master/203-high-availability-flexible-database/files/ssh_host_rsa_key",
-    "location": "[resourceGroup().location]"
+    "location": "[resourceGroup().location]",
+    "conf1": "[concat('Microsoft.DBforPostgreSQL/flexibleServers/', variables('dbName'), '/configurations/shared_preload_libraries')]",
+    "conf2": "[concat('Microsoft.DBforPostgreSQL/flexibleServers/', variables('dbName'), '/configurations/azure.extensions')]",
+    "conf3": "[concat('Microsoft.DBforPostgreSQL/flexibleServers/', variables('dbName'), '/configurations/pg_partman_bgw.dbname')]",
+    "conf4": "[concat('Microsoft.DBforPostgreSQL/flexibleServers/', variables('dbName'), '/configurations/pg_partman_bgw.role')]"
   },
   "resources": [
     {
-      "apiVersion": "2020-04-01",
+      "apiVersion": "2024-05-01",
       "type": "Microsoft.Network/virtualNetworks",
       "name": "[variables('vnetName')]",
       "location": "[variables('location')]",
@@ -118,7 +129,7 @@
     },
     {
       "type": "Microsoft.Network/privateDnsZones",
-      "apiVersion": "2018-09-01",
+      "apiVersion": "2024-06-01",
       "name": "[variables('privateDnsZoneName')]",
       "location": "global",
       "tags": {},
@@ -129,7 +140,7 @@
         "[variables('privateDnsId')]"
       ],
       "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
-      "apiVersion": "2020-06-01",
+      "apiVersion": "2024-06-01",
       "name": "[variables('vnetLinkName')]",
       "location": "global",
       "properties": {
@@ -144,7 +155,7 @@
         "[variables('vnetLinkId')]"
       ],
       "type": "Microsoft.DBforPostgreSQL/flexibleServers",
-      "apiVersion": "2021-06-01",
+      "apiVersion": "2024-11-01-preview",
       "name": "[variables('dbName')]",
       "location": "[variables('location')]",
       "sku": {
@@ -171,13 +182,13 @@
         "Storage": {
           "StorageSizeGB": "128"
         },
-        "version": "12"
+        "version": "13"
       },
       "resources": [
         {
           "name": "filemage",
           "type": "databases",
-          "apiVersion": "2021-06-01",
+          "apiVersion": "2024-11-01-preview",
           "properties": {
             "charset": "UTF8",
             "collation": "C"
@@ -188,7 +199,7 @@
         },
         {
           "type": "configurations",
-          "apiVersion": "2021-06-01",
+          "apiVersion": "2024-11-01-preview",
           "name": "shared_preload_libraries",
           "properties": {
             "source": "user-override",
@@ -200,44 +211,47 @@
         },
         {
           "type": "configurations",
-          "apiVersion": "2021-06-01",
+          "apiVersion": "2024-11-01-preview",
           "name": "azure.extensions",
           "properties": {
             "source": "user-override",
             "value": "pg_partman"
           },
           "dependsOn": [
-            "[concat('Microsoft.DBforPostgreSQL/flexibleServers/', variables('dbName'))]"
+            "[concat('Microsoft.DBforPostgreSQL/flexibleServers/', variables('dbName'))]",
+            "[variables('conf1')]"
           ]
         },
         {
           "type": "configurations",
-          "apiVersion": "2021-06-01",
+          "apiVersion": "2024-11-01-preview",
           "name": "pg_partman_bgw.dbname",
           "properties": {
             "source": "user-override",
             "value": "filemage"
           },
           "dependsOn": [
-            "[concat('Microsoft.DBforPostgreSQL/flexibleServers/', variables('dbName'))]"
+            "[concat('Microsoft.DBforPostgreSQL/flexibleServers/', variables('dbName'))]",
+            "[variables('conf2')]"
           ]
         },
         {
           "type": "configurations",
-          "apiVersion": "2021-06-01",
+          "apiVersion": "2024-11-01-preview",
           "name": "pg_partman_bgw.role",
           "properties": {
             "source": "user-override",
             "value": "filemage"
           },
           "dependsOn": [
-            "[concat('Microsoft.DBforPostgreSQL/flexibleServers/', variables('dbName'))]"
+            "[concat('Microsoft.DBforPostgreSQL/flexibleServers/', variables('dbName'))]",
+            "[variables('conf3')]"
           ]
         }
       ]
     },
     {
-      "apiVersion": "2019-09-01",
+      "apiVersion": "2024-05-01",
       "type": "Microsoft.Network/publicIPAddresses",
       "name": "[variables('lbPublicIpName')]",
       "location": "[variables('location')]",
@@ -255,7 +269,7 @@
       "dependsOn": [
         "[variables('lbPublicIpId')]"
       ],
-      "apiVersion": "2019-09-01",
+      "apiVersion": "2024-05-01",
       "location": "[variables('location')]",
       "sku": {
         "name": "Basic"
@@ -377,11 +391,12 @@
     {
       "name": "[variables('scaleSetName')]",
       "type": "Microsoft.Compute/virtualMachineScaleSets",
-      "apiVersion": "2019-12-01",
+      "apiVersion": "2024-07-01",
       "location": "[variables('location')]",
       "dependsOn": [
         "[variables('nsgId')]",
-        "[variables('lbId')]"
+        "[variables('lbId')]",
+        "[variables('conf4')]"
       ],
       "sku": {
         "name": "[parameters('appSku')]",
@@ -479,7 +494,7 @@
     {
       "name": "[variables('nsgName')]",
       "type": "Microsoft.Network/networkSecurityGroups",
-      "apiVersion": "2018-04-01",
+      "apiVersion": "2024-05-01",
       "location": "[variables('location')]",
       "properties": {
         "securityRules": [
